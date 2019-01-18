@@ -196,3 +196,126 @@
   196  find -type f -exec md5sum "{}"
   197  find -type f -exec md5sum
   198  history > cmds
+  199  git add -A files
+  200  cd ..
+  201  git add -A files
+  202  ls
+  203  cd files
+  204  ls
+  205  touch answers.txt
+  206  ls
+  207  git push
+  208  git add files
+  209  cd ..
+  210  git add files
+  211  git push
+  212  git commit -m 'all done' files
+  213  git push
+  214  git commit -m 'not really done!' files
+  215  hhh
+  216  q
+  217  quit
+  218  help
+  219  wc --help
+  220  find --help
+  221  man --help
+  222  cd
+  223  ~/.ssh/authorized_keys
+  224  echo $PATH
+  225  PATH=/foo:$PATH
+  226  echo $PATH
+  227  ls
+  228  cd /rsgrps/bh_class/schackartk
+  229  ls
+  230  ls -a
+  231  cd /rsgrps/bh_class/schackartk/biosys-analytics
+  232  git pull upstream master
+  233  ls
+  234  cd ..
+  235  ls
+  236  biosys-analytics
+  237  cd assignments
+  238  cd biosys-analytics
+  239  ls
+  240  cd assignments
+  241  ls
+  242  cd 01-unix
+  243  ls
+  244  cd README.md
+  245  head README.md
+  246  cd ../..
+  247  git push
+  248  cd /rsgrps/bh_class/schackartk/biosys-analytics
+  249  ..
+  250  cat ~/.ssh/authorized_keys
+  251  cd /rsgrps/bh_class/schackartk/biosys-analytics
+  252  ls
+  253  cd assignments
+  254  ls
+  255  cd 01-unix
+  256  ls
+  257  cd files
+  258  ls
+  259  cd ..
+  260  rmdir files
+  261  rm -r files
+  262  ls
+  263  mkdir files
+  264  cd files
+  265  wget https://www.constitution.org/usdeclar.txt
+  266  wget https://www.usconstitution.net/const.txt
+  267  wget scarlet.txt https://www.gutenberg.org/files/25344/25344-0.txt
+  268  ls
+  269  rm 25344-0.txt
+  270  ls
+  271  man wget
+  272  wget -o scarlet.txt https://www.gutenberg.org/files/25344/25344-0.txt
+  273  ls
+  274  rm 25344-0.txt
+  275  ls
+  276  ls -l
+  277  wc -l const.txt scarlet.txt usdeclar.txt
+  278  man find
+  279  find . -type f -size +50k
+  280  wget -o scarlet.txt https://www.gutenberg.org/files/25344/25344-0.txt
+  281  wget -O scarlet.txt https://www.gutenberg.org/files/25344/25344-0.txt
+  282  ls -l
+  283  rm 25344-0.txt
+  284  ls -l
+  285  find . -type f -size +50k
+  286  file const.txt
+  287  ls file | md5sum
+  288  ls | md5sum
+  289  md5sum scarlet.txt
+  290  du -shc
+  291  history > cmds
+  292  ls | grep -c "judge"
+  293  grep -c "judge" const.txt
+  294  ls | grep -c "judge"
+  295  ls | grep -o judge | wc -l
+  296  ls | grep -o "judge" | wc -l
+  297  grep -o "judge" const.txt
+  298  grep -c "judge" const.txt
+  299  grep -Ri 'judge'
+  300  grep -Ric 'judge'
+  301  grep -li 'judge'
+  302  grep -Ril 'judge'
+  303  grep -oi 'judge' scarlet.txt | wc -l
+  304  grep -oi 'scarlet' scarlet.txt | wc 
+  305  grep -oi 'scarlet' scarlet.txt | wc -l
+  306  head -15 -R > foo.txt
+  307  head -15 -r > foo
+  308  head -15 scarlet.txt usdeclar.txt const.txt >> foo
+  309  ls
+  310  wc -l foo
+  311  rm foo
+  312  ls
+  313  head -15 scarlet.txt usdeclar.txt const.txt >> foo
+  314  wc -l foo
+  315  head 15 foo | wc -l
+  316  head -15 foo | wc -l
+  317  head -45 foo | wc -l
+  318  head -15 scarlet.txt usdeclar.txt const.txt | wc -l
+  319  rm foo
+  320  ls
+  321  history > cmds

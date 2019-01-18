@@ -1,0 +1,71 @@
+[schackartk@login3 01-unix]$ mkdir files
+[schackartk@login3 01-unix]$ cd files
+[schackartk@login3 files]$ wget https://www.constitution.org/usdeclar.txt
+--2019-01-18 13:28:09--  https://www.constitution.org/usdeclar.txt
+Resolving www.constitution.org... 52.52.214.82, 52.52.2.146, 54.153.63.33, ...
+Connecting to www.constitution.org|52.52.214.82|:443... connected.
+HTTP request sent, awaiting response... 200 OK
+Length: unspecified [text/plain]
+Saving to: usdeclar.txt
+
+    [ <=>                                                                                                                                                                                                ] 8,685       --.-K/s   in 0s
+
+2019-01-18 13:28:09 (49.7 MB/s) - usdeclar.txt saved [8685]
+
+[schackartk@login3 files]$ wget https://www.usconstitution.net/const.txt
+--2019-01-18 13:29:05--  https://www.usconstitution.net/const.txt
+Resolving www.usconstitution.net... 52.8.36.71
+Connecting to www.usconstitution.net|52.8.36.71|:443... connected.
+HTTP request sent, awaiting response... 200 OK
+Length: unspecified [text/plain]
+Saving to: const.txt
+
+    [ <=>                                                                                                                                                                                                ] 45,119      --.-K/s   in 0.04s
+
+2019-01-18 13:29:06 (1.11 MB/s) - const.txt saved [45119]
+
+[schackartk@login3 files]$ man wget
+[schackartk@login3 files]$ wget -O scarlet.txt https://www.gutenberg.org/files/25344/25344-0.txt
+--2019-01-18 13:42:12--  https://www.gutenberg.org/files/25344/25344-0.txt
+Resolving www.gutenberg.org... 152.19.134.47, 2610:28:3090:3000:0:bad:cafe:47
+Connecting to www.gutenberg.org|152.19.134.47|:443... connected.
+HTTP request sent, awaiting response... 200 OK
+Length: 525464 (513K) [text/plain]
+Saving to: scarlet.txt
+
+100%[===================================================================================================================================================================================================>] 525,464     1.02M/s   in 0.5s
+
+2019-01-18 13:42:13 (1.02 MB/s) - scarlet.txt saved [525464/525464]
+[schackartk@login3 files]$ ls -l
+total 584
+-rw-r--r-- 1 schackartk bh_class  45119 Jan 18 12:05 const.txt
+-rw-r--r-- 1 schackartk bh_class 525464 Jan 23  2015 scarlet.txt
+-rw-r--r-- 1 schackartk bh_class   8685 Jan 18 12:16 usdeclar.txt
+[schackartk@login3 files]$ find . -type f -size +50k
+./scarlet.txt
+[schackartk@login3 files]$ file const.txt
+const.txt: ASCII English text
+[schackartk@login3 files]$ ls | md5sum
+0d5a04a1a1fc0d4691abcc12f753d61c  -
+[schackartk@login3 files]$ du -shc
+584K    .
+584K    total
+[schackartk@login3 files]$ grep -Ric 'judge'
+scarlet.txt:15
+const.txt:5
+cmds:0
+usdeclar.txt:2
+[schackartk@login3 files]$ grep -Ril 'judge'
+scarlet.txt
+const.txt
+usdeclar.txt
+[schackartk@login3 files]$ grep -oi 'scarlet' scarlet.txt | wc -l
+125
+[schackartk@login3 files]$ head -15 scarlet.txt usdeclar.txt const.txt >> foo
+[schackartk@login3 files]$ wc -l foo
+50 foo
+[schackartk@login3 files]$ rm foo
+[schackartk@login3 files]$ ls
+cmds  const.txt  foo.txt  scarlet.txt  usdeclar.txt
+[schackartk@login3 files]$ history > cmds
+[schackartk@login3 files]$ touch answers.txt
