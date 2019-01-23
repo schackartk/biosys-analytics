@@ -1,0 +1,39 @@
+Last login: Fri Jan 18 13:24:18 2019 from gatekeeper.hpc.arizona.edu
+[schackartk@login3 ~]$ cd /rsgrps/bh_class/schackartk/biosys-analytics
+[schackartk@login3 biosys-analytics]$ cd assignments/01-unix
+[schackartk@login3 01-unix]$ ls
+files  README.md
+[schackartk@login3 01-unix]$ cd ..
+[schackartk@login3 assignments]$ ls
+01-unix  01-unix-grad  02-bash-scripting
+[schackartk@login3 assignments]$ cd 01-unix-grad
+[schackartk@login3 01-unix-grad]$ ls
+files  README.md
+[schackartk@login3 01-unix-grad]$ cd files
+[schackartk@login3 files]$ ls
+answers.txt  cmds  const.txt  foo.txt  scarlet.txt  usdeclar.txt
+[schackartk@login2 files]$ find . -name '[cs]*' -exec wc -w  {} \;
+86895 ./scarlet.txt
+7652 ./const.txt
+1420 ./cmds
+[schackartk@login3 files]$ grep '^Article[[:blank:]][0-9]' *.txt
+const.txt:Article 1.
+const.txt:Article 2.
+const.txt:Article 3.
+const.txt:Article 4.
+const.txt:Article 5.
+const.txt:Article 6.
+const.txt:Article 7.
+[schackartk@login3 files]$ grep '^$' const.txt | wc -l
+169
+[schackartk@login3 files]$ grep -i '^[aeiou]' scarlet.txt | cut -c 1 | LC_COLLATE=C sort | uniq -c
+     59 A
+     10 E
+     88 I
+     20 O
+      6 U
+    633 a
+    199 e
+    348 i
+    358 o
+     80 u
