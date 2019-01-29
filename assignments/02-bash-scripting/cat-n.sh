@@ -18,7 +18,7 @@ i=0
 while read -r LINE; do
 	i=$((i+1))
 	#printf "%3d $LINE\n" $i
-	echo $i $LINE
+	echo "$i" "$LINE"
 done < "$INPUT_FILE"
 
 exit 0
