@@ -9,7 +9,7 @@ if [[ $# -gt 0 ]]; then
 		grep -i "^$1" $TMP_FILE | nl
 	else
 		echo "There are no countries starting with \""$1"\""
-		exit 1
+		
 	fi
 
 else
