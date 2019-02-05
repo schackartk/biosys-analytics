@@ -24,22 +24,16 @@ def main():
         print('NUM ({}) must be between 1 and 9'.format(number))
         sys.exit(1)
 
-    l = 1
-    i = 1
-    j = 1
-    while i <= int(number):
-        while j <= int(number):
-            if j != int(number):
-                print(str(l).rjust(3), end ="")
-                l += 1
-                j += 1
-            else:
-                print(str(l).rjust(3))
-                l += 1
-                j += 1
+    square = int(number) ** 2
+    square_list = range(1, square + 1)
+    
+    i = 1 
+    for numbers in square_list:
+        print('{:3}'.format(numbers),end='')
+        if i == int(number):
+            print('')
+            i = 0
         i += 1
-        j = 1
-
 
 
 # --------------------------------------------------
