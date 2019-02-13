@@ -63,12 +63,14 @@ def main():
     cell = args.cell
     cells = [0,1,2,3,4,5,6,7,8,9]
    
-    acc_char = {i:0 for i in '-XO'}
+    acc_char = {i:0 for i in '.-XO'}
     count = 0
 
     for i, char in enumerate(state):
         if char in acc_char:
             count += 1
+            if char == '.':
+                char = '-'
             if char != '-':
                 cells[i+1] = char
     
