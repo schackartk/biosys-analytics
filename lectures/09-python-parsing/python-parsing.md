@@ -1092,6 +1092,99 @@ fasplit/CAM_SMPL_GS112.0009.fa      50
 fasplit/CAM_SMPL_GS112.0010.fa      50
 ````
 
+## FASTQ
+
+FASTA (sequence) plus "quality" scores for each base call gives us "FASTQ." Here is an example:
+
+````
+$ head -4 !$
+head -4 input.fastq
+@M00773:480:000000000-BLYPT:1:2106:12063:1841 1:N:0:AGGCGACCTTA
+TTTCTGTGCCAGCAGCCGCGGTAAGACAGAGGTGGCGAGCGTTGTTCGGATTTACTGGGCGTAAAGCGCGGGTAGGCGGTTCGGCCAGTCAGATGTGAAATCCCACCGCTTAACGGTGGAACGGCGTCTGATACTACCGGACTTGAGTGCAGGAGAGGAGGGTGGAATTTCCGGTGTAGCGGTGAAATGCGTAGAGATCGGAAGGAACACCAGTGGCGAAGGCGGCCCTCTGGACTGCAACTGACGCTGAGACGCGAAAGCGTGGGGAGCACACAGGATTAGATACCCTGGTAGTCAACGC
++
+CCCCCGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGEFGGFEGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGFGGGGGGGGGGGGGGGGGGEGGGGGGGEGGGGGGDGDGGGGGGGGGGGFDGGGGGGGGFFFFDFG7FFGGGGGGGGG7EGGGGGDGGEGGGGGG=EFGDGGFGGDEGGGGFFC5;EEDFEFGEGFCFGEECC8?5CEE*:5*;?FGGFGCCFGAFFGGGDGGFFGCDECGGGGE;EE8EC=390;575>8<+9FGGFC<8CGFF:9+9,<D5)
+````
+
+Because of inherent logical flaws in this file format, the only sane representation is for the record to consist of four lines:
+
+1. header ('@', ID, desc, yadda yadda yadda)
+2. sequence
+3. spacer
+4. quality scores (phred 33/64)
+
+Here is what the record looks like:
+
+````
+>>> from Bio import SeqIO
+>>> rec = list(SeqIO.parse('input.fastq', 'fastq'))[0]
+>>> rec = list(SeqIO.parse('input.fastq', 'fastq'))[0]
+>>> print(rec)
+ID: M00773:480:000000000-BLYPT:1:2106:12063:1841
+Name: M00773:480:000000000-BLYPT:1:2106:12063:1841
+Description: M00773:480:000000000-BLYPT:1:2106:12063:1841 1:N:0:AGGCGACCTTA
+Number of features: 0
+Per letter annotation for: phred_quality
+Seq('TTTCTGTGCCAGCAGCCGCGGTAAGACAGAGGTGGCGAGCGTTGTTCGGATTTA...CGC', SingleLetterAlphabet())
+````
+
+But this looks pretty much like a FASTA file, so where is the quality information? We have to look here (http://biopython.org/DIST/docs/api/Bio.SeqIO.QualityIO-module.html):
+
+````
+>>> print(rec.format("qual"))
+>M00773:480:000000000-BLYPT:1:2106:12063:1841 1:N:0:AGGCGACCTTA
+34 34 34 34 34 38 38 38 38 38 38 38 38 38 38 38 38 38 38 38
+38 38 38 38 38 38 38 38 38 38 38 38 38 38 38 38 38 36 37 38
+38 37 36 38 38 38 38 38 38 38 38 38 38 38 38 38 38 38 38 38
+38 38 38 38 38 38 38 38 38 38 38 38 38 38 38 38 38 38 38 38
+38 38 38 38 38 38 38 38 37 38 38 38 38 38 38 38 38 38 38 38
+38 38 38 38 38 38 38 36 38 38 38 38 38 38 38 36 38 38 38 38
+38 38 35 38 35 38 38 38 38 38 38 38 38 38 38 38 37 35 38 38
+38 38 38 38 38 38 37 37 37 37 35 37 38 22 37 37 38 38 38 38
+38 38 38 38 38 22 36 38 38 38 38 38 35 38 38 36 38 38 38 38
+38 38 28 36 37 38 35 38 38 37 38 38 35 36 38 38 38 38 37 37
+34 20 26 36 36 35 37 36 37 38 36 38 37 34 37 38 36 36 34 34
+23 30 20 34 36 36 9 25 20 9 26 30 37 38 38 37 38 34 34 37
+38 32 37 37 38 38 38 35 38 38 37 37 38 34 35 36 34 38 38 38
+38 36 26 36 36 23 36 34 28 18 24 15 26 20 22 20 29 23 27 10
+24 37 38 38 37 34 27 23 34 38 37 37 25 24 10 24 11 27 35 20
+8
+````
+
+We can combine the bases and their quality scores into a list of tuples (which can naturally become a dictionary):
+
+````
+>>> list(zip(rec.seq, rec.format('qual')))
+[('T', '>'), ('T', 'M'), ('T', '0'), ('C', '0'), ...
+>>> for base, qual in zip(rec.seq, rec.format('qual')):
+...   print('base = "{}" qual = "{}"'.format(base, qual))
+...   break
+...
+base = "T" qual = ">"
+````
+
+The scores are based on the ordinal represenation of the quality characters' ASCII values. Cf:
+
+* https://www.rapidtables.com/code/text/ascii-table.html
+* https://www.drive5.com/usearch/manual/quality_score.html
+
+We can convert FASTQ to FASTA by simply changing the leading "@" in the header to ">" and then removing lines 3 and 4 from each record. Here is an [g]awk one-liner to do that:
+
+````
+#!/bin/gawk -f
+
+### fq2fa.awk
+##
+## Copyright Tomer Altman
+##
+### Desription:
+##
+## Given a FASTQ formatted file, transform it into a FASTA nucleotide file.
+
+(FNR % 4) == 1 || (FNR % 4) == 2 { gsub("^@", ">"); print }
+````
+
+Can you write one in Python?
+
 ## GFF
 
 Two of the most common output files in bioinformatics, GFF (General Feature Format) and BLAST's tab/CSV files do not include headers, so it's up to you to merge in the headers.  Additionally, some of the lines may be comments (they start with `#` just like bash and Python), so you should skip those.  Further, the last field in GFF is basically a dumping ground for whatever else the data provider felt like putting there.  Usually it's a bunch of "key=value" pairs, but there's no guarantee.  Let's take a look at parsing the GFF output from Prodigal:
@@ -1305,6 +1398,109 @@ attr.ENA-FIRST-PUBLIC    : 2015-02-15
 attr.ENA-LAST-UPDATE     : 2018-08-15
 ````
 
+## SwissProt
+
+The SwissProt format is one, like GenBank and EMBL, that allows for detailed annotation of a sequence whereas FASTA/Q are primarily devoted to the sequence/quality and sometimes metadata/annotations are crudely shoved into the header line. Parsing SwissProt, however, is no more difficult thanks to the `SeqIO` module. Most of the interesting non-sequence data is in the `annotations` which is a dictionary where the keys are strings like "accessions" and "keywords" and the values are ints, strings, and lists.
+
+Here is an example program to print out the accessions, keywords, and taxonomy in a SwissProt record:
+
+````
+$ cat -n swissprot.py
+     1	#!/usr/bin/env python3
+     2
+     3	import argparse
+     4	import sys
+     5	from Bio import SeqIO
+     6
+     7
+     8	# --------------------------------------------------
+     9	def get_args():
+    10	    """get args"""
+    11	    parser = argparse.ArgumentParser(
+    12	        description='Parse Swissprot file',
+    13	        formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+    14
+    15	    parser.add_argument('file', metavar='FILE', help='Swissprot file')
+    16
+    17	    return parser.parse_args()
+    18
+    19
+    20	# --------------------------------------------------
+    21	def die(msg='Something bad happened'):
+    22	    """print message and exit with error"""
+    23	    print(msg)
+    24	    sys.exit(1)
+    25
+    26
+    27	# --------------------------------------------------
+    28	def main():
+    29	    """main"""
+    30	    args = get_args()
+    31	    file = args.file
+    32
+    33	    for i, record in enumerate(SeqIO.parse(file, "swiss"), start=1):
+    34	        print('{:3}: {}'.format(i, record.id))
+    35	        annotations = record.annotations
+    36
+    37	        for annot_type in ['accessions', 'keywords', 'taxonomy']:
+    38	            if annot_type in annotations:
+    39	                print('\tANNOT {}:'.format(annot_type))
+    40	                val = annotations[annot_type]
+    41	                if type(val) is list:
+    42	                    for v in val:
+    43	                        print('\t\t{}'.format(v))
+    44	                else:
+    45	                    print('\t\t{}'.format(val))
+    46
+    47
+    48
+    49	# --------------------------------------------------
+    50	if __name__ == '__main__':
+    51	    main()
+$ ./swissprot.py input.swiss
+  1: G5EEM5
+	ANNOT accessions://
+		Nematoda
+		Chromadorea
+		Rhabditida
+		Rhabditoidea
+		Rhabditidae
+		Peloderinae
+		Caenorhabditis
+````
+
+You should look at the sample "input.swiss" file to get a greater understanding of what is contained.
+
 ## JSON
 
-There's lots of JSON in the world that needs to be parsed.
+JSON stands for JavaScript Object Notation, and it has become the lingua franca of data exchange on the Internet. For our example, I will use the JSON that is returned by https://www.imicrobe.us/api/v1/samples/578. We need to `import json` and use `json.load` to read from an open file handle (there is also `loads` -- load string) to parse the data from JSON into a Python dictionary. We could `print` that, but it's not nearly as pretty as printing the JSON which we can do with `json.dumps` (dump string) and the keyword argument `indent=4` to get nice indentation.
+
+````
+$ cat -n json_parse.py
+     1	#!/usr/bin/env python3
+     2
+     3	import json
+     4
+     5	file = '578.json'
+     6	data = json.load(open(file))
+     7	print(json.dumps(data, indent=4))
+$ ./json_parse.py | head -12
+{
+    "sample_id": 578,
+    "project_id": 26,
+    "sample_acc": "CAM_SMPL_GS108",
+    "sample_name": "GS108",
+    "sample_type": "Metagenome",
+    "sample_description": "GS108",
+    "url": "",
+    "creation_date": "2018-07-06T04:43:09.000Z",
+    "project": {
+        "project_id": 26,
+        "project_code": "CAM_PROJ_GOS",
+````
+
+If you `head 578.json`, you will see there is no whitespace, so this is a nicer way to look at the data; however, if all we wanted was to look at pretty JSON, we could do this:
+
+````
+$ python -m json.tool 578.json
+````
