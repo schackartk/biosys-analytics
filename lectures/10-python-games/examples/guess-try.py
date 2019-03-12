@@ -85,11 +85,12 @@ def main():
         if re.match('q(uit)?', guess.lower()):
             die('Now you will never know the answer.')
 
-        if not guess.isdigit():
-            warn('"{}" is not a number'.format(guess))
+        num = 0
+        try:
+            num = int(guess)
+        except:
+            warn('"{}" is not an integer'.format(guess))
             continue
-
-        num = int(guess)
 
         if not low <= num <= high:
             print('Number "{}" is not in the allowed range'.format(num))

@@ -1,13 +1,13 @@
 # Parsing with Python
 
-We'll use the term "parsing" to mean deriving meaning from structured text. For example, we can use `argparse` to find meaning from command-line arguments that may or may not have flags or be defined by positions. In this chapter, we'll look at common file file formats in bioinformatics like CSV, FASTA/Q, and GFF.
+We'll use the term "parsing" to mean deriving meaning from structured text. In this chapter, we'll look at parsing command-line arguments and common file file formats in bioinformatics like CSV, FASTA/Q, and GFF.
 
 ## Command-line Arguments
 
-If you have not already, I encourage you to copy the "new_py.py" script into your `$PATH` and then execute it with the `-a` argument to start a new script with `argparse`:
+If you've been using `new_py.py -a` to create new programs, you've already been using a parser -- one that uses the `argparse` module to derive meaning from command-line arguments that may or may not have flags or be defined by positions. Let's create a new program and see how it works:
 
 ```
-$ ./new_py.py -a test
+$ new_py.py -a test
 Done, see new script "test.py."
 ```
 
@@ -882,9 +882,147 @@ $ cat -n subset_fastx.py
    110	    main()
 ````
 
+Here is a version that will randomly select some percentage of the reads from the input file. I had to write this version because we had created an artificial metagenome from a set of known organisms, and I was testing a program with input of various numbers of reads. I did not realize at first that, in creating the artificial set, reads from each organism had been added in blocks. Since I was taking all my reads from the top of the file down, I was mostly getting just the first few species. Randomly selecting reads when there are potentially millions of records is a bit tricky, so I decided to use a non-deterministic approach where I just roll the dice and see if the number I get on each read is less than the percentage of reads I want to take. This program will also stop at a given number of reads so you could use it to randomly subset an unevenly sized number of samples down to the same number of reads per sample.
+
+````
+$ cat -n random_subset.py
+     1	#!/usr/bin/env python3
+     2	"""
+     3	Author:  Ken Youens-Clark <kyclark@email.arizona.edu>
+     4	Purpose: Probabalistically subset FASTQ/A
+     5	"""
+     6
+     7	import argparse
+     8	import os
+     9	import re
+    10	import sys
+    11	from random import randint
+    12	from Bio import SeqIO
+    13
+    14
+    15	# --------------------------------------------------
+    16	def get_args():
+    17	    """get args"""
+    18	    parser = argparse.ArgumentParser(
+    19	        description='Randomly subset FASTQ',
+    20	        formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+    21
+    22	    parser.add_argument('file', metavar='FILE', help='FASTQ/A file')
+    23
+    24	    parser.add_argument(
+    25	        '-p',
+    26	        '--pct',
+    27	        help='Percent of reads',
+    28	        metavar='int',
+    29	        type=int,
+    30	        default=50)
+    31
+    32	    parser.add_argument(
+    33	        '-m',
+    34	        '--max',
+    35	        help='Maximum number of reads',
+    36	        metavar='int',
+    37	        type=int,
+    38	        default=0)
+    39
+    40	    parser.add_argument(
+    41	        '-f',
+    42	        '--input_format',
+    43	        help='Intput format',
+    44	        metavar='IN_FMT',
+    45	        type=str,
+    46	        choices=['fastq', 'fasta'],
+    47	        default='')
+    48
+    49	    parser.add_argument(
+    50	        '-F',
+    51	        '--output_format',
+    52	        help='Output format',
+    53	        metavar='OUT_FMT',
+    54	        type=str,
+    55	        choices=['fastq', 'fasta'],
+    56	        default='')
+    57
+    58	    parser.add_argument(
+    59	        '-o',
+    60	        '--outfile',
+    61	        help='Output file',
+    62	        metavar='FILE',
+    63	        type=str,
+    64	        default='')
+    65
+    66	    return parser.parse_args()
+    67
+    68
+    69	# --------------------------------------------------
+    70	def warn(msg):
+    71	    """Print a message to STDERR"""
+    72	    print(msg, file=sys.stderr)
+    73
+    74
+    75	# --------------------------------------------------
+    76	def die(msg='Something bad happened'):
+    77	    """warn() and exit with error"""
+    78	    warn(msg)
+    79	    sys.exit(1)
+    80
+    81
+    82	# --------------------------------------------------
+    83	def main():
+    84	    """main"""
+    85	    args = get_args()
+    86	    file = args.file
+    87	    pct = args.pct
+    88	    out_file = args.outfile
+    89	    max_num_reads = args.max
+    90	    min_num = 0
+    91	    max_num = 100
+    92
+    93	    if not os.path.isfile(file):
+    94	        die('"{}" is not a file'.format(file))
+    95
+    96	    in_fmt = args.input_format
+    97	    if not in_fmt:
+    98	        _, ext = os.path.splitext(file)
+    99	        in_fmt = 'fastq' if re.match('\.f(ast)?q$', ext) else 'fasta'
+   100
+   101	    out_fmt = args.output_format or in_fmt
+   102
+   103	    if not min_num < pct < max_num:
+   104	        msg = '--pct "{}" must be between {} and {}'
+   105	        die(msg.format(pct, min_num, max_num))
+   106
+   107	    if not out_file:
+   108	        base, _ = os.path.splitext(file)
+   109	        out_file = '{}.sub{}.{}'.format(base, pct, out_fmt)
+   110
+   111	    out_fh = open(out_file, 'wt')
+   112	    num_taken = 0
+   113	    total_num = 0
+   114
+   115	    with open(file) as fh:
+   116	        for rec in SeqIO.parse(fh, in_fmt):
+   117	            total_num += 1
+   118	            if randint(min_num, max_num) <= pct:
+   119	                num_taken += 1
+   120	                SeqIO.write(rec, out_fh, out_fmt)
+   121	                if max_num_reads > 0 and num_taken == max_num_reads:
+   122	                    break
+   123
+   124	    out_fh.close()
+   125
+   126	    print('Wrote {} of {} ({:.02f}%) to "{}"'.format(
+   127	        num_taken, total_num, num_taken / total_num * 100, out_file))
+   128
+   129
+   130	# --------------------------------------------------
+   131	if __name__ == '__main__':
+   132	    main()
+````
+
 ## FASTA splitter
 
-I seem to have implemented my own FASTA splitter a few times in as many languages.  Here is one that writes a maximum number of sequences to each output file.  It would not be hard to instead write a maximum number of bytes, but, for the short reads I usually handle, this works fine.  Again I will use the BioPython `SeqIO` module to parse the FASTA files
+I seem to have implemented my own FASTA splitter a few times in as many languages.  Here is one that writes a maximum number of sequences to each output file.  It would not be hard to instead write a maximum number of bytes, but, for the short reads I usually handle, this works fine.  Again I will use the BioPython `SeqIO` module to parse the FASTA files.
 
 ````
 $ cat -n fa_split.py
