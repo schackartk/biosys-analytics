@@ -37,8 +37,12 @@ def die(msg='Something bad happened'):
     sys.exit(1)
 
 # --------------------------------------------------
-def find_month(month_str):
-    month_str = str.lower(month_str[0:3])
+def main():
+    """Make a jazz noise here"""
+    args = get_args()
+    raw_date = args.date
+    raw_date.lower()
+    
     month_val = {
         'jan': '01',
         'feb': '02',
@@ -54,19 +58,6 @@ def find_month(month_str):
         'dec': '12'
     }
 
-    month = month_val[month_str]
-    
-    return(month)
-
-
-# --------------------------------------------------
-def main():
-    """Make a jazz noise here"""
-    args = get_args()
-    raw_date = args.date
-
-    raw_date.lower()
-    
     date_re1 = re.compile('(?P<year>\d{4})'
                          '[/-]?'
                          '(?P<month>\d{1,2})'
@@ -105,7 +96,7 @@ def main():
     elif match3:
         year = match3.group('year')
         month_str = match3.group('month')
-        month = find_month(month_str)
+        month = month_val[str.lower(month_str[0:3])]
         day = '01'
     else:
         die('No match')
