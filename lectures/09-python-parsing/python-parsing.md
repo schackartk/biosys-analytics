@@ -1,13 +1,13 @@
 # Parsing with Python
 
-We'll use the term "parsing" to mean deriving meaning from structured text. For example, we can use `argparse` to find meaning from command-line arguments that may or may not have flags or be defined by positions. In this chapter, we'll look at common file file formats in bioinformatics like CSV, FASTA/Q, and GFF.
+We'll use the term "parsing" to mean deriving meaning from structured text. In this chapter, we'll look at parsing command-line arguments and common file file formats in bioinformatics like CSV, FASTA/Q, and GFF.
 
 ## Command-line Arguments
 
-If you have not already, I encourage you to copy the "new_py.py" script into your `$PATH` and then execute it with the `-a` argument to start a new script with `argparse`:
+If you've been using `new_py.py -a` to create new programs, you've already been using a parser -- one that uses the `argparse` module to derive meaning from command-line arguments that may or may not have flags or be defined by positions. Let's create a new program and see how it works:
 
 ```
-$ ./new_py.py -a test
+$ new_py.py -a test
 Done, see new script "test.py."
 ```
 
@@ -882,9 +882,147 @@ $ cat -n subset_fastx.py
    110	    main()
 ````
 
+Here is a version that will randomly select some percentage of the reads from the input file. I had to write this version because we had created an artificial metagenome from a set of known organisms, and I was testing a program with input of various numbers of reads. I did not realize at first that, in creating the artificial set, reads from each organism had been added in blocks. Since I was taking all my reads from the top of the file down, I was mostly getting just the first few species. Randomly selecting reads when there are potentially millions of records is a bit tricky, so I decided to use a non-deterministic approach where I just roll the dice and see if the number I get on each read is less than the percentage of reads I want to take. This program will also stop at a given number of reads so you could use it to randomly subset an unevenly sized number of samples down to the same number of reads per sample.
+
+````
+$ cat -n random_subset.py
+     1	#!/usr/bin/env python3
+     2	"""
+     3	Author:  Ken Youens-Clark <kyclark@email.arizona.edu>
+     4	Purpose: Probabalistically subset FASTQ/A
+     5	"""
+     6
+     7	import argparse
+     8	import os
+     9	import re
+    10	import sys
+    11	from random import randint
+    12	from Bio import SeqIO
+    13
+    14
+    15	# --------------------------------------------------
+    16	def get_args():
+    17	    """get args"""
+    18	    parser = argparse.ArgumentParser(
+    19	        description='Randomly subset FASTQ',
+    20	        formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+    21
+    22	    parser.add_argument('file', metavar='FILE', help='FASTQ/A file')
+    23
+    24	    parser.add_argument(
+    25	        '-p',
+    26	        '--pct',
+    27	        help='Percent of reads',
+    28	        metavar='int',
+    29	        type=int,
+    30	        default=50)
+    31
+    32	    parser.add_argument(
+    33	        '-m',
+    34	        '--max',
+    35	        help='Maximum number of reads',
+    36	        metavar='int',
+    37	        type=int,
+    38	        default=0)
+    39
+    40	    parser.add_argument(
+    41	        '-f',
+    42	        '--input_format',
+    43	        help='Intput format',
+    44	        metavar='IN_FMT',
+    45	        type=str,
+    46	        choices=['fastq', 'fasta'],
+    47	        default='')
+    48
+    49	    parser.add_argument(
+    50	        '-F',
+    51	        '--output_format',
+    52	        help='Output format',
+    53	        metavar='OUT_FMT',
+    54	        type=str,
+    55	        choices=['fastq', 'fasta'],
+    56	        default='')
+    57
+    58	    parser.add_argument(
+    59	        '-o',
+    60	        '--outfile',
+    61	        help='Output file',
+    62	        metavar='FILE',
+    63	        type=str,
+    64	        default='')
+    65
+    66	    return parser.parse_args()
+    67
+    68
+    69	# --------------------------------------------------
+    70	def warn(msg):
+    71	    """Print a message to STDERR"""
+    72	    print(msg, file=sys.stderr)
+    73
+    74
+    75	# --------------------------------------------------
+    76	def die(msg='Something bad happened'):
+    77	    """warn() and exit with error"""
+    78	    warn(msg)
+    79	    sys.exit(1)
+    80
+    81
+    82	# --------------------------------------------------
+    83	def main():
+    84	    """main"""
+    85	    args = get_args()
+    86	    file = args.file
+    87	    pct = args.pct
+    88	    out_file = args.outfile
+    89	    max_num_reads = args.max
+    90	    min_num = 0
+    91	    max_num = 100
+    92
+    93	    if not os.path.isfile(file):
+    94	        die('"{}" is not a file'.format(file))
+    95
+    96	    in_fmt = args.input_format
+    97	    if not in_fmt:
+    98	        _, ext = os.path.splitext(file)
+    99	        in_fmt = 'fastq' if re.match('\.f(ast)?q$', ext) else 'fasta'
+   100
+   101	    out_fmt = args.output_format or in_fmt
+   102
+   103	    if not min_num < pct < max_num:
+   104	        msg = '--pct "{}" must be between {} and {}'
+   105	        die(msg.format(pct, min_num, max_num))
+   106
+   107	    if not out_file:
+   108	        base, _ = os.path.splitext(file)
+   109	        out_file = '{}.sub{}.{}'.format(base, pct, out_fmt)
+   110
+   111	    out_fh = open(out_file, 'wt')
+   112	    num_taken = 0
+   113	    total_num = 0
+   114
+   115	    with open(file) as fh:
+   116	        for rec in SeqIO.parse(fh, in_fmt):
+   117	            total_num += 1
+   118	            if randint(min_num, max_num) <= pct:
+   119	                num_taken += 1
+   120	                SeqIO.write(rec, out_fh, out_fmt)
+   121	                if max_num_reads > 0 and num_taken == max_num_reads:
+   122	                    break
+   123
+   124	    out_fh.close()
+   125
+   126	    print('Wrote {} of {} ({:.02f}%) to "{}"'.format(
+   127	        num_taken, total_num, num_taken / total_num * 100, out_file))
+   128
+   129
+   130	# --------------------------------------------------
+   131	if __name__ == '__main__':
+   132	    main()
+````
+
 ## FASTA splitter
 
-I seem to have implemented my own FASTA splitter a few times in as many languages.  Here is one that writes a maximum number of sequences to each output file.  It would not be hard to instead write a maximum number of bytes, but, for the short reads I usually handle, this works fine.  Again I will use the BioPython `SeqIO` module to parse the FASTA files
+I seem to have implemented my own FASTA splitter a few times in as many languages.  Here is one that writes a maximum number of sequences to each output file.  It would not be hard to instead write a maximum number of bytes, but, for the short reads I usually handle, this works fine.  Again I will use the BioPython `SeqIO` module to parse the FASTA files.
 
 ````
 $ cat -n fa_split.py
@@ -1092,6 +1230,99 @@ fasplit/CAM_SMPL_GS112.0009.fa      50
 fasplit/CAM_SMPL_GS112.0010.fa      50
 ````
 
+## FASTQ
+
+FASTA (sequence) plus "quality" scores for each base call gives us "FASTQ." Here is an example:
+
+````
+$ head -4 !$
+head -4 input.fastq
+@M00773:480:000000000-BLYPT:1:2106:12063:1841 1:N:0:AGGCGACCTTA
+TTTCTGTGCCAGCAGCCGCGGTAAGACAGAGGTGGCGAGCGTTGTTCGGATTTACTGGGCGTAAAGCGCGGGTAGGCGGTTCGGCCAGTCAGATGTGAAATCCCACCGCTTAACGGTGGAACGGCGTCTGATACTACCGGACTTGAGTGCAGGAGAGGAGGGTGGAATTTCCGGTGTAGCGGTGAAATGCGTAGAGATCGGAAGGAACACCAGTGGCGAAGGCGGCCCTCTGGACTGCAACTGACGCTGAGACGCGAAAGCGTGGGGAGCACACAGGATTAGATACCCTGGTAGTCAACGC
++
+CCCCCGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGEFGGFEGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGFGGGGGGGGGGGGGGGGGGEGGGGGGGEGGGGGGDGDGGGGGGGGGGGFDGGGGGGGGFFFFDFG7FFGGGGGGGGG7EGGGGGDGGEGGGGGG=EFGDGGFGGDEGGGGFFC5;EEDFEFGEGFCFGEECC8?5CEE*:5*;?FGGFGCCFGAFFGGGDGGFFGCDECGGGGE;EE8EC=390;575>8<+9FGGFC<8CGFF:9+9,<D5)
+````
+
+Because of inherent logical flaws in this file format, the only sane representation is for the record to consist of four lines:
+
+1. header ('@', ID, desc, yadda yadda yadda)
+2. sequence
+3. spacer
+4. quality scores (phred 33/64)
+
+Here is what the record looks like:
+
+````
+>>> from Bio import SeqIO
+>>> rec = list(SeqIO.parse('input.fastq', 'fastq'))[0]
+>>> rec = list(SeqIO.parse('input.fastq', 'fastq'))[0]
+>>> print(rec)
+ID: M00773:480:000000000-BLYPT:1:2106:12063:1841
+Name: M00773:480:000000000-BLYPT:1:2106:12063:1841
+Description: M00773:480:000000000-BLYPT:1:2106:12063:1841 1:N:0:AGGCGACCTTA
+Number of features: 0
+Per letter annotation for: phred_quality
+Seq('TTTCTGTGCCAGCAGCCGCGGTAAGACAGAGGTGGCGAGCGTTGTTCGGATTTA...CGC', SingleLetterAlphabet())
+````
+
+But this looks pretty much like a FASTA file, so where is the quality information? We have to look here (http://biopython.org/DIST/docs/api/Bio.SeqIO.QualityIO-module.html):
+
+````
+>>> print(rec.format("qual"))
+>M00773:480:000000000-BLYPT:1:2106:12063:1841 1:N:0:AGGCGACCTTA
+34 34 34 34 34 38 38 38 38 38 38 38 38 38 38 38 38 38 38 38
+38 38 38 38 38 38 38 38 38 38 38 38 38 38 38 38 38 36 37 38
+38 37 36 38 38 38 38 38 38 38 38 38 38 38 38 38 38 38 38 38
+38 38 38 38 38 38 38 38 38 38 38 38 38 38 38 38 38 38 38 38
+38 38 38 38 38 38 38 38 37 38 38 38 38 38 38 38 38 38 38 38
+38 38 38 38 38 38 38 36 38 38 38 38 38 38 38 36 38 38 38 38
+38 38 35 38 35 38 38 38 38 38 38 38 38 38 38 38 37 35 38 38
+38 38 38 38 38 38 37 37 37 37 35 37 38 22 37 37 38 38 38 38
+38 38 38 38 38 22 36 38 38 38 38 38 35 38 38 36 38 38 38 38
+38 38 28 36 37 38 35 38 38 37 38 38 35 36 38 38 38 38 37 37
+34 20 26 36 36 35 37 36 37 38 36 38 37 34 37 38 36 36 34 34
+23 30 20 34 36 36 9 25 20 9 26 30 37 38 38 37 38 34 34 37
+38 32 37 37 38 38 38 35 38 38 37 37 38 34 35 36 34 38 38 38
+38 36 26 36 36 23 36 34 28 18 24 15 26 20 22 20 29 23 27 10
+24 37 38 38 37 34 27 23 34 38 37 37 25 24 10 24 11 27 35 20
+8
+````
+
+We can combine the bases and their quality scores into a list of tuples (which can naturally become a dictionary):
+
+````
+>>> list(zip(rec.seq, rec.format('qual')))
+[('T', '>'), ('T', 'M'), ('T', '0'), ('C', '0'), ...
+>>> for base, qual in zip(rec.seq, rec.format('qual')):
+...   print('base = "{}" qual = "{}"'.format(base, qual))
+...   break
+...
+base = "T" qual = ">"
+````
+
+The scores are based on the ordinal represenation of the quality characters' ASCII values. Cf:
+
+* https://www.rapidtables.com/code/text/ascii-table.html
+* https://www.drive5.com/usearch/manual/quality_score.html
+
+We can convert FASTQ to FASTA by simply changing the leading "@" in the header to ">" and then removing lines 3 and 4 from each record. Here is an [g]awk one-liner to do that:
+
+````
+#!/bin/gawk -f
+
+### fq2fa.awk
+##
+## Copyright Tomer Altman
+##
+### Desription:
+##
+## Given a FASTQ formatted file, transform it into a FASTA nucleotide file.
+
+(FNR % 4) == 1 || (FNR % 4) == 2 { gsub("^@", ">"); print }
+````
+
+Can you write one in Python?
+
 ## GFF
 
 Two of the most common output files in bioinformatics, GFF (General Feature Format) and BLAST's tab/CSV files do not include headers, so it's up to you to merge in the headers.  Additionally, some of the lines may be comments (they start with `#` just like bash and Python), so you should skip those.  Further, the last field in GFF is basically a dumping ground for whatever else the data provider felt like putting there.  Usually it's a bunch of "key=value" pairs, but there's no guarantee.  Let's take a look at parsing the GFF output from Prodigal:
@@ -1182,8 +1413,232 @@ $ cat -n parse_prodigal_gff.py
 
 ## XML
 
-Maybe something with parsing NCBI taxonomy?
+Here's an example that looks at XML from the NCBI taxonomy. Here is what the raw file looks like:
+
+````
+$ head ena-101.xml
+<?xml version="1.0" encoding="UTF-8"?>
+<SAMPLE alias="SAMD00024455" accession="DRS018892" broker_name="DDBJ">
+     <IDENTIFIERS>
+          <PRIMARY_ID>DRS018892</PRIMARY_ID>
+          <EXTERNAL_ID namespace="BioSample">SAMD00024455</EXTERNAL_ID>
+          <SUBMITTER_ID namespace="">SAMD00024455</SUBMITTER_ID>
+     </IDENTIFIERS>
+     <TITLE>Surface water bacterial community from the East China Sea Site 100</TITLE>
+     <SAMPLE_NAME>
+          <TAXON_ID>408172</TAXON_ID>
+````
+
+The whitespace in XML is not significant and simply bloats the size of the file, so often you will get something that is unreadable. I recommend you install the program `xmllint` to look at such files. If you inspect the file, you can see that XML gives us a way to represent hierarchical data unlike CSV files which are essentially "flat" (unless you start sticking things like lists and key/value pairs [dictionaries]). We need to use a specific XML parser and use accessors that look quite a bit like file paths. There is a "root" of the XML from which we can descend into the structure to find data. Here is a program that will extract various parts of the XML.
+
+````
+$ cat -n xml_ena.py
+     1	#!/usr/bin/env python3
+     2	"""
+     3	Author : kyclark
+     4	Date   : 2019-02-22
+     5	Purpose: Rock the Casbah
+     6	"""
+     7
+     8	import argparse
+     9	import os
+    10	import sys
+    11	from xml.etree.ElementTree import ElementTree
+    12
+    13
+    14	# --------------------------------------------------
+    15	def get_args():
+    16	    """get command-line arguments"""
+    17	    parser = argparse.ArgumentParser(
+    18	        description='Argparse Python script',
+    19	        formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+    20
+    21	    parser.add_argument('xml', metavar='XML', help='XML input', nargs='+')
+    22
+    23	    parser.add_argument(
+    24	        '-o',
+    25	        '--outdir',
+    26	        help='Output directory',
+    27	        metavar='str',
+    28	        type=str,
+    29	        default='out')
+    30
+    31	    return parser.parse_args()
+    32
+    33
+    34	# --------------------------------------------------
+    35	def warn(msg):
+    36	    """Print a message to STDERR"""
+    37	    print(msg, file=sys.stderr)
+    38
+    39
+    40	# --------------------------------------------------
+    41	def die(msg='Something bad happened'):
+    42	    """warn() and exit with error"""
+    43	    warn(msg)
+    44	    sys.exit(1)
+    45
+    46
+    47	# --------------------------------------------------
+    48	def main():
+    49	    """Make a jazz noise here"""
+    50	    args = get_args()
+    51	    xml_files = args.xml
+    52	    out_dir = args.outdir
+    53
+    54	    if not os.path.isdir(out_dir):
+    55	        os.makedirs(out_dir)
+    56
+    57	    for file in xml_files:
+    58	        print('>>>>>>', file)
+    59	        tree = ElementTree()
+    60	        root = tree.parse(file)
+    61
+    62	        d = []
+    63	        for key, value in root.attrib.items():
+    64	            d.append(('sample.' + key, value))
+    65
+    66	        for id_ in root.find('IDENTIFIERS'):
+    67	            d.append(('id.' + id_.tag, id_.text))
+    68
+    69	        for attr in root.findall('SAMPLE_ATTRIBUTES/SAMPLE_ATTRIBUTE'):
+    70	            d.append(('attr.' + attr.find('TAG').text, attr.find('VALUE').text))
+    71
+    72	        for key, value in d:
+    73	            print('{:25}: {}'.format(key, value))
+    74
+    75	        print()
+    76
+    77	# --------------------------------------------------
+    78	if __name__ == '__main__':
+    79	    main()
+$ ./xml_ena.py ena-101.xml
+>>>>>> ena-101.xml
+sample.alias             : SAMD00024455
+sample.accession         : DRS018892
+sample.broker_name       : DDBJ
+id.PRIMARY_ID            : DRS018892
+id.EXTERNAL_ID           : SAMD00024455
+id.SUBMITTER_ID          : SAMD00024455
+attr.sample_name         : 100A
+attr.collection_date     : 2013-08-15/2013-08-28
+attr.depth               : 0.5m
+attr.env_biome           : coastal biome
+attr.env_feature         : natural environment
+attr.env_material        : water
+attr.geo_loc_name        : China:the East China Sea
+attr.lat_lon             : 29.3 N 122.08 E
+attr.project_name        : seawater bacterioplankton
+attr.BioSampleModel      : MIMARKS.survey.water
+attr.ENA-SPOT-COUNT      : 54843
+attr.ENA-BASE-COUNT      : 13886949
+attr.ENA-FIRST-PUBLIC    : 2015-02-15
+attr.ENA-LAST-UPDATE     : 2018-08-15
+````
+
+## SwissProt
+
+The SwissProt format is one, like GenBank and EMBL, that allows for detailed annotation of a sequence whereas FASTA/Q are primarily devoted to the sequence/quality and sometimes metadata/annotations are crudely shoved into the header line. Parsing SwissProt, however, is no more difficult thanks to the `SeqIO` module. Most of the interesting non-sequence data is in the `annotations` which is a dictionary where the keys are strings like "accessions" and "keywords" and the values are ints, strings, and lists.
+
+Here is an example program to print out the accessions, keywords, and taxonomy in a SwissProt record:
+
+````
+$ cat -n swissprot.py
+     1	#!/usr/bin/env python3
+     2
+     3	import argparse
+     4	import sys
+     5	from Bio import SeqIO
+     6
+     7
+     8	# --------------------------------------------------
+     9	def get_args():
+    10	    """get args"""
+    11	    parser = argparse.ArgumentParser(
+    12	        description='Parse Swissprot file',
+    13	        formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+    14
+    15	    parser.add_argument('file', metavar='FILE', help='Swissprot file')
+    16
+    17	    return parser.parse_args()
+    18
+    19
+    20	# --------------------------------------------------
+    21	def die(msg='Something bad happened'):
+    22	    """print message and exit with error"""
+    23	    print(msg)
+    24	    sys.exit(1)
+    25
+    26
+    27	# --------------------------------------------------
+    28	def main():
+    29	    """main"""
+    30	    args = get_args()
+    31	    file = args.file
+    32
+    33	    for i, record in enumerate(SeqIO.parse(file, "swiss"), start=1):
+    34	        print('{:3}: {}'.format(i, record.id))
+    35	        annotations = record.annotations
+    36
+    37	        for annot_type in ['accessions', 'keywords', 'taxonomy']:
+    38	            if annot_type in annotations:
+    39	                print('\tANNOT {}:'.format(annot_type))
+    40	                val = annotations[annot_type]
+    41	                if type(val) is list:
+    42	                    for v in val:
+    43	                        print('\t\t{}'.format(v))
+    44	                else:
+    45	                    print('\t\t{}'.format(val))
+    46
+    47
+    48
+    49	# --------------------------------------------------
+    50	if __name__ == '__main__':
+    51	    main()
+$ ./swissprot.py input.swiss
+  1: G5EEM5
+	ANNOT accessions://
+		Nematoda
+		Chromadorea
+		Rhabditida
+		Rhabditoidea
+		Rhabditidae
+		Peloderinae
+		Caenorhabditis
+````
+
+You should look at the sample "input.swiss" file to get a greater understanding of what is contained.
 
 ## JSON
 
-There's lots of JSON in the world that needs to be parsed.
+JSON stands for JavaScript Object Notation, and it has become the lingua franca of data exchange on the Internet. For our example, I will use the JSON that is returned by https://www.imicrobe.us/api/v1/samples/578. We need to `import json` and use `json.load` to read from an open file handle (there is also `loads` -- load string) to parse the data from JSON into a Python dictionary. We could `print` that, but it's not nearly as pretty as printing the JSON which we can do with `json.dumps` (dump string) and the keyword argument `indent=4` to get nice indentation.
+
+````
+$ cat -n json_parse.py
+     1	#!/usr/bin/env python3
+     2
+     3	import json
+     4
+     5	file = '578.json'
+     6	data = json.load(open(file))
+     7	print(json.dumps(data, indent=4))
+$ ./json_parse.py | head -12
+{
+    "sample_id": 578,
+    "project_id": 26,
+    "sample_acc": "CAM_SMPL_GS108",
+    "sample_name": "GS108",
+    "sample_type": "Metagenome",
+    "sample_description": "GS108",
+    "url": "",
+    "creation_date": "2018-07-06T04:43:09.000Z",
+    "project": {
+        "project_id": 26,
+        "project_code": "CAM_PROJ_GOS",
+````
+
+If you `head 578.json`, you will see there is no whitespace, so this is a nicer way to look at the data; however, if all we wanted was to look at pretty JSON, we could do this:
+
+````
+$ python -m json.tool 578.json
+````
