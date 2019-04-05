@@ -69,11 +69,10 @@ def main():
     out_file = args.outfile
     clustered_set = set()
 
-    if not os.path.isfile(fasta):
-        die('--proteins "{}" is not a file'.format(fasta))
-  
-    if not os.path.isfile(hits):
-        die('--cdhit "{}" is not a file'.format(hits))
+    for i,file in enumerate([fasta,hits]):
+        if not os.path.isfile(file):
+            bad_arg = '--proteins' if i == 0 else '--cdhit'
+            die('{} "{}" is not a file'.format(bad_arg,file))
 
     if os.path.isfile(out_file):
         os.remove(out_file)
