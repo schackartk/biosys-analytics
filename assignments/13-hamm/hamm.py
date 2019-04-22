@@ -14,7 +14,7 @@ import os
 def get_args():
     """get command-line arguments"""
     parser = argparse.ArgumentParser(
-        description='HAMM [Hard As A Mother****ing Mother****er',
+        description='Find Hamm distances between words in files',
         formatter_class=argparse.ArgumentDefaultsHelpFormatter)
 
     parser.add_argument(
