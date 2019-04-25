@@ -71,7 +71,7 @@ def main():
     for handle in file_handles:
         for line in handle:
             for word in line.rstrip().split():
-                string = word.lower()   
+                string = word.lower()
                 words.append(re.sub('[^a-zA-Z0-9]', '', string))
 
     for word in words:
@@ -82,15 +82,15 @@ def main():
     if sort == 'word':
         listed = list(d.keys())
         listed.sort()
-   
+
         for item in listed:
             if d[item] >= min_count:
-                print('{:20} {}'.format(item,d[item]))
+                print('{:20} {}'.format(item, d[item]))
     elif sort == 'frequency':
         pairs = sorted([(x[1], x[0]) for x in d.items()])
         for count, word in pairs:
             if count >= min_count:
-                print('{:20} {}'.format(word,str(count)))
+                print('{:20} {}'.format(word, str(count)))
 
 
 # --------------------------------------------------
