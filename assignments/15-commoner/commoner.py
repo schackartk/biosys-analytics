@@ -149,6 +149,7 @@ def main():
         hamm = dist(combo)
         if hamm <= min_ham:
                 comm.append(list([combo[0],combo[1],hamm]))
+
     comm.sort()    
     if comm:
         if args.table:
